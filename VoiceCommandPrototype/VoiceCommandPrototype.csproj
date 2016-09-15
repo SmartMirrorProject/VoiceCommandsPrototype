@@ -101,6 +101,12 @@
     <Compile Include="MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Models\Commands\BaseCommand.cs" />
+    <Compile Include="Models\Commands\Module1Commands.cs" />
+    <Compile Include="Models\Commands\Module2Commands.cs" />
+    <Compile Include="Models\Module1.cs" />
+    <Compile Include="Models\Module2.cs" />
+    <Compile Include="Models\VoiceProcessor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -110,6 +116,7 @@
     <None Include="VoiceCommandPrototype_TemporaryKey.pfx" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Grammars\grammar.xml" />
     <Content Include="Properties\Default.rd.xml" />
     <Content Include="Assets\LockScreenLogo.scale-200.png" />
     <Content Include="Assets\SplashScreen.scale-200.png" />
@@ -128,6 +135,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="ViewModels\" />
+    <Folder Include="Views\" />
   </ItemGroup>
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
     <VisualStudioVersion>14.0</VisualStudioVersion>
