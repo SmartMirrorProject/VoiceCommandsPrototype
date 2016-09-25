@@ -12,6 +12,7 @@ using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
+using VoiceCommandPrototype.Models;
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -22,9 +23,21 @@ namespace VoiceCommandPrototype
     /// </summary>
     public sealed partial class MainPage : Page
     {
+        private readonly List<IVoiceControlModule> voiceControlModules = new List<IVoiceControlModule>();
         public MainPage()
         {
             this.InitializeComponent();
+            //All voice control modules should be loaded into the voice processor on creation.
+            VoiceProcessor.Instance.InitializeSpeechRecognizer();
+            voiceControlModules.Add(new MainModule("Grammar\\mainGrammar.xml"));
+            voiceControlModules.Add(new CalendarModule("Grammar\\weatherGrammar.xml"));
+            voiceControlModules.Add(new WeatherModule("Grammar\\calendarGrammar.xml"));
+            VoiceProcessor.Instance.LoadModulesAndStartProcessor(voiceControlModules);
+        }
+
+        public static void MainPage_Unloaded(object sender, object args)
+        {
+            VoiceProcessor.Instance.UnloadSpeechRecognizer();
         }
     }
 }

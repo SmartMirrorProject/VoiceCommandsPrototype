@@ -1,0 +1,87 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<grammar
+  version="1.0"
+  xml:lang="en-US"
+  root="voiceCommands"
+  xmlns="http://www.w3.org/2001/06/grammar"
+  tag-format="semantics/1.0">
+
+  <rule id="voiceCommands">
+    <one-of>
+      <item>
+        <ruleref uri="#onOffCommands"/>
+        <tag>out.displayCommand=rules.onOffCommands;</tag>
+      </item>
+      <item>
+        <ruleref uri="#loadUnloadCommands"/>
+        <tag>out.moduleCommand=rules.loadUnloadCommands;</tag>
+      </item>
+    </one-of>
+  </rule>
+
+  <!--     On/Off Commands     -->
+  <rule id="onOffCommands">
+    <item>
+      <item> mirror </item>
+      <item>
+        <ruleref uri="#onOffCommandActions" />
+        <tag> out.cmd=rules.latest(); </tag>
+      </item>
+    </item>
+  </rule>
+
+  <!--     On/Off Actions     -->
+  <rule id="onOffCommandActions">
+    <one-of>
+      <item>
+        on <tag> out="ON"; </tag>
+      </item>
+      <item>
+        off <tag> out="OFF"; </tag>
+      </item>
+    </one-of>
+  </rule>
+  
+  <!--     Load/Unload Commands     -->
+  <rule id="loadUnloadCommands">
+    <item> mirror </item>
+    <item>
+      <ruleref uri="#loadUnloadActions"/>
+      <tag> out.cmd=rules.latest(); </tag>
+    </item>
+    <item>
+      <ruleref uri="#modules"/>
+      <tag> out.module=rules.latest(); </tag>
+    </item>
+  </rule>
+
+  <!--     Load/Unload Actions     -->
+  <rule id="loadUnloadActions">
+    <one-of>
+      <item>
+        load <tag> out="ENABLE"; </tag>
+      </item>
+      <item>
+        unload <tag> out="DISABLE"; </tag>
+      </item>
+      <item>
+        enable <tag> out="ENABLE"; </tag>
+      </item>
+      <item>
+        disable <tag> out="DISABLE"; </tag>
+      </item>
+    </one-of>
+  </rule>
+  
+  <!--     Modules     -->
+  <rule id="modules">
+    <one-of>
+      <item>
+        weather <tag> out="WEATHER"; </tag>
+      </item>
+      <item>
+        calendar <tag> out="CALENDAR" </tag>
+      </item>
+    </one-of>
+  </rule>
+</grammar>

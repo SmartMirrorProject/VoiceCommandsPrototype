@@ -101,11 +101,13 @@
     <Compile Include="MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Models\Commands\BaseCommand.cs" />
-    <Compile Include="Models\Commands\Module1Commands.cs" />
-    <Compile Include="Models\Commands\Module2Commands.cs" />
-    <Compile Include="Models\Module1.cs" />
-    <Compile Include="Models\Module2.cs" />
+    <Compile Include="Models\Commands\MainCommands.cs" />
+    <Compile Include="Models\Commands\WeatherCommands.cs" />
+    <Compile Include="Models\Commands\CalendarCommands.cs" />
+    <Compile Include="Models\IVoiceControlModule.cs" />
+    <Compile Include="Models\MainModule.cs" />
+    <Compile Include="Models\CalendarModule.cs" />
+    <Compile Include="Models\WeatherModule.cs" />
     <Compile Include="Models\VoiceProcessor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -116,7 +118,15 @@
     <None Include="VoiceCommandPrototype_TemporaryKey.pfx" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Grammars\grammar.xml" />
+    <Content Include="Grammar\mainGrammar.xml">
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="Grammar\calendarGrammar.xml">
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="Grammar\weatherGrammar.xml">
+      <SubType>Designer</SubType>
+    </Content>
     <Content Include="Properties\Default.rd.xml" />
     <Content Include="Assets\LockScreenLogo.scale-200.png" />
     <Content Include="Assets\SplashScreen.scale-200.png" />

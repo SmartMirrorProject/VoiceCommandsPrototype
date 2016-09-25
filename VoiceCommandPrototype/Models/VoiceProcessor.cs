@@ -7,80 +7,106 @@ using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using Windows.Media.SpeechRecognition;
 using Windows.Storage;
+using VoiceCommandPrototype.Models.Commands;
 
 namespace VoiceCommandPrototype.Models
 {
     class VoiceProcessor
     {
-        //------------------------------------------------------------------------------------------------------------
-        //---------------------------------------Voice Recognition Constants------------------------------------------
-        //------------------------------------------------------------------------------------------------------------
-        //Grammar File
-        private const string SRGS_FILE = "Grammar\\grammar.xml";
-
-        // Tag TARGET
+        private static readonly VoiceProcessor _instance = new VoiceProcessor();
+        //Constructor is private because this is class is a singleton.
+        private VoiceProcessor(){}
+        public static VoiceProcessor Instance => _instance;
+        
+        private const string TAG_MODULE = "module";
         private const string TAG_TARGET = "target";
-        // Tag CMD
         private const string TAG_CMD = "cmd";
-        // Tag Device
         private const string TAG_TIME_FRAME = "timeFrame";
 
+        private static Dictionary<string, IVoiceControlModule> activeModules = new Dictionary<string, IVoiceControlModule>(); 
 
-        //Speech Recognizer
-        private static SpeechRecognizer _recognizer;
-
-        /// <summary>
-        /// When the program is terminated, stop the SpeechRecognizer
-        /// </summary>
-        public static async void UnloadSpeechRecognizer()
-        {
-            //Stop voice recognition
-            await _recognizer.ContinuousRecognitionSession.StopAsync();
-        }
+        private SpeechRecognizer _recognizer;
 
         /// <summary>
         /// When the program is started, initialize the SpeechRecognizer
         /// </summary>
-        public static async void InitializeSpeechRecognizer()
+        public void InitializeSpeechRecognizer()
         {
-            // Initialize recognizer
+            // Initialize recognizer and set it's event handlers
             _recognizer = new SpeechRecognizer();
-
-            // Set event handlers
             _recognizer.StateChanged += RecognizerStateChanged;
             _recognizer.ContinuousRecognitionSession.ResultGenerated += RecognizerResultGenerated;
+        }
 
-            // Load Grammar file
-            string fileName = String.Format(SRGS_FILE);
-            StorageFile grammarContentFile = await Package.Current.InstalledLocation.GetFileAsync(fileName);
+        public async void LoadModulesAndStartProcessor(List<IVoiceControlModule> modules)
+        {
+            foreach(IVoiceControlModule module in modules)
+            {
+                await LoadVoiceControlModule(module);
+            }
+            StartSpeechRecognizer();
+        }
 
-            //Create grammar constraint
-            SpeechRecognitionGrammarFileConstraint grammarConstraint =
-                new SpeechRecognitionGrammarFileConstraint(grammarContentFile);
+        public async Task<bool> LoadVoiceControlModule(IVoiceControlModule module)
+        {
+            //If the module is not loaded.
+            if (!IsModuleLoaded(module))
+            {
+                //Create the grammar for the passed in module.
+                SpeechRecognitionGrammarFileConstraint grammar = await CreateGrammarFromFile(module.GrammarFilePath,
+                    module.VoiceControlKey);
+                //Add the grammar file from the passed in module to the speech recognizer
+                _recognizer.Constraints.Add(grammar);
+                //Store the module into the activeModules Dictionary
+                activeModules[module.VoiceControlKey] = module;
+                //Set the voice control memeber variables of the module.
+                module.IsVoiceControlLoaded = true;
+                module.IsVoiceControlEnabled = true;
+                module.Grammar = grammar;
+                return true;
+            }
+            return false;
+        }
 
-            // Add to grammar constraint
-            _recognizer.Constraints.Add(grammarConstraint);
 
-            // Compile grammar
+        public bool IsModuleLoaded(IVoiceControlModule module)
+        {
+            return activeModules.ContainsValue(module);
+        }
+
+        public async void StartSpeechRecognizer()
+        {
+            // Compile the loaded GrammarFiles
             SpeechRecognitionCompilationResult compilationResult = await _recognizer.CompileConstraintsAsync();
-
-            Debug.WriteLine("Status: " + compilationResult.Status.ToString());
 
             // If successful, display the recognition result.
             if (compilationResult.Status == SpeechRecognitionResultStatus.Success)
             {
                 Debug.WriteLine("Result: " + compilationResult.ToString());
 
-                await _recognizer.ContinuousRecognitionSession.StartAsync();
+                SpeechContinuousRecognitionSession session = _recognizer.ContinuousRecognitionSession;
+                try
+                {
+                    await session.StartAsync();
+                }
+                catch (Exception e)
+                {
+                    //TODO this needs to report to the user that something failed.
+                    //also potentially write to a log somewhere.               
+                    Debug.WriteLine(e.Data);
+                }
+
             }
             else
             {
+                //TODO this needs to report to the user that something failed.
+                //also potentially write to a log somewhere.
                 Debug.WriteLine("Status: " + compilationResult.Status);
             }
         }
 
         //Handle appropriate voice commands
-        private static void RecognizerResultGenerated(SpeechContinuousRecognitionSession session,
+        private void RecognizerResultGenerated(SpeechContinuousRecognitionSession session,
                                                       SpeechContinuousRecognitionResultGeneratedEventArgs args)
         {
             // Output debug strings
@@ -91,106 +117,36 @@ namespace VoiceCommandPrototype.Models
 
             int count = args.Result.SemanticInterpretation.Properties.Count;
             Debug.WriteLine("Count: " + count);
-            Debug.WriteLine("Tag: " + args.Result.Constraint.Tag);
+            Debug.WriteLine("Tag: " + args.Result.Constraint.Tag);            
 
-            // Check for different tags and set variables for logic based on commands
-            String target = args.Result.SemanticInterpretation.Properties.ContainsKey(TAG_TARGET)
-                ? args.Result.SemanticInterpretation.Properties[TAG_TARGET][0].ToString()
-                : "";
-
-            String cmd = args.Result.SemanticInterpretation.Properties.ContainsKey(TAG_CMD)
-                ? args.Result.SemanticInterpretation.Properties[TAG_CMD][0].ToString()
-                : "";
-
-            String timeFrame = args.Result.SemanticInterpretation.Properties.ContainsKey(TAG_TIME_FRAME)
-                ? args.Result.SemanticInterpretation.Properties[TAG_TIME_FRAME][0].ToString()
-                : "";
-
-            //Logic based on what commands were said.
-            //Turn Mirror On
-            if (cmd.Equals(COMMAND_ON))
-            {
-                MirrorState.SetMirrorOn(true);
-            }
-            //Turn Mirror Off
-            else if (cmd.Equals(COMMAND_OFF))
-            {
-                MirrorState.SetMirrorOn(false);
-            }
-            //Show Weather Element specified
-            else if (cmd.Equals(COMMAND_SHOW))
-            {
-                if (target.Equals(TARGET_WEATHER))
-                {
-                    ShowWeatherDisplay(timeFrame);
-                }
-                else
-                {
-                    Debug.WriteLine("Invalid Target for 'Show' Command");
-                }
-            }
-            //Hide weather element specified
-            else if (cmd.Equals(COMMAND_HIDE))
-            {
-                if (target.Equals(TARGET_WEATHER))
-                {
-                    HideWeatherDisplay(timeFrame);
-                }
-                else
-                {
-                    Debug.WriteLine("Invalid Target for 'Show' Command");
-                }
-            }
-            else
-            {
-                Debug.WriteLine("Unknown Voice Command");
-            }
+            IVoiceControlModule commandsModule = activeModules[args.Result.Constraint.Tag];
+            commandsModule.ProcessVoiceCommand(args.Result);
         }
 
+
+
         // Debug changes to state of the recognizer for test purposes
-        private static void RecognizerStateChanged(SpeechRecognizer sender, SpeechRecognizerStateChangedEventArgs args)
+        private void RecognizerStateChanged(SpeechRecognizer sender, SpeechRecognizerStateChangedEventArgs args)
         {
             Debug.WriteLine("Speech recognizer state: " + args.State.ToString());
         }
 
-        //Logic to show the appropriate weather element when a voice command is given
-        private static void ShowWeatherDisplay(string timeFrame)
+        public async Task<SpeechRecognitionGrammarFileConstraint> CreateGrammarFromFile(string file, string key)
         {
-            if (timeFrame.Equals(WEATHER_WEEKS))
-                MirrorState.SetWeeksWeatherOn(true);
-            else if (timeFrame.Equals(WEATHER_TODAY))
-            {
-                MirrorState.SetWeatherOn(true);
-                MirrorState.SetMainWeatherInfo(MirrorState.MAIN_WTHR_TODAY);
-            }
-            else if (timeFrame.Equals(WEATHER_TOMORROW))
-            {
-                MirrorState.SetWeatherOn(true);
-                MirrorState.SetMainWeatherInfo(MirrorState.MAIN_WTHR_TMRW);
-            }
-            else
-            {
-                Debug.WriteLine("Unknown Time Frame for Show Weather command.");
-            }
+            StorageFile grammarContentFile = await Package.Current.InstalledLocation.GetFileAsync(String.Format(file));
+            //Create grammar constraint
+            return new SpeechRecognitionGrammarFileConstraint(grammarContentFile, key);
         }
 
-        //Logic to hide the appropriate weather element when a voice command is given
-        private static void HideWeatherDisplay(string timeFrame)
+
+
+        /// <summary>
+        /// When the program is terminated, stop the SpeechRecognizer
+        /// </summary>
+        public async void UnloadSpeechRecognizer()
         {
-            if (timeFrame.Equals(WEATHER_WEEKS))
-                MirrorState.SetWeeksWeatherOn(false);
-            else if (timeFrame.Equals(WEATHER_TODAY))
-            {
-                MirrorState.SetWeatherOn(true);
-            }
-            else if (timeFrame.Equals(WEATHER_TOMORROW))
-            {
-                MirrorState.SetMainWeatherInfo(MirrorState.MAIN_WTHR_TODAY);
-            }
-            else
-            {
-                Debug.WriteLine("Unknown Time Frame for Show Weather command.");
-            }
+            //Stop voice recognition
+            await _recognizer.ContinuousRecognitionSession.StopAsync();
         }
     }
 }
